@@ -13,10 +13,8 @@ async def log_meal(meal: MealLogRequest):
         "meal_name": meal.meal_name,
         "foods": [item.dict() for item in meal.foods],
         "goal": meal.goal,
-    }
-
-    # Invoke LangGraph agent
-    result = agent.invoke(state)
+    }    # Invoke LangGraph agent asynchronously
+    result = await agent.ainvoke(state)
 
     # Return response in expected schema format
     return {

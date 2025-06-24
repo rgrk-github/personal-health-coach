@@ -1,5 +1,7 @@
 from typing import Dict, List, TypedDict, Optional
 from langgraph.graph import StateGraph
+from app.services.nutrition_api import get_nutrition_summary
+import asyncio
 
 # Define our agent's state structure
 class AgentState(TypedDict, total=False):
@@ -17,24 +19,34 @@ def parse_meal_input(state: AgentState) -> AgentState:
     return state
 
 # Step 2: Lookup dummy nutrition data
-def lookup_nutrition(state: AgentState) -> AgentState:
-    print("🔍 Debug - State keys in lookup_nutrition:", list(state.keys()))
-    print("🔍 Debug - Foods received:", state.get("parsed_foods", []))
-    
-    # Dummy values for now (will be replaced by Nutritionix API later)
-    total_nutrition = {
-        "calories": 250,
-        "protein": 15,
-        "fat": 20,
-        "carbs": 5,
-        "fiber": 2,
-        "net_carbs": 3
-    }
+async def lookup_nutrition(state: AgentState) -> AgentState:
+    parsed_foods = state.get("parsed_foods", [])
+    # Fix: Use 'item' field instead of 'name' field based on schema
+    query = ", ".join([item.get("item", "") for item in parsed_foods if item.get("item")])
 
-    # ✅ THIS LINE IS CRITICAL
-    state["nutrition_summary"] = total_nutrition
-    print("✅ Nutrition summary added to state:", total_nutrition)
-    print("🔍 Debug - State keys after adding nutrition_summary:", list(state.keys()))
+    print("🔍 Query to Nutritionix:", repr(query))
+    print("🔍 Parsed foods:", parsed_foods)
+
+    # Check if we have a valid query
+    if not query or query.strip() == "":
+        print("❌ Empty query - no food items found")
+        print("🔍 Raw foods data:", state.get("foods", []))
+        raise ValueError("No valid food items found in the request")
+
+    response = await get_nutrition_summary(query)
+    foods = response.get("foods", [])
+
+    total = {
+        "calories": sum(f.get("nf_calories", 0) for f in foods),
+        "protein": sum(f.get("nf_protein", 0) for f in foods),
+        "fat": sum(f.get("nf_total_fat", 0) for f in foods),
+        "carbs": sum(f.get("nf_total_carbohydrate", 0) for f in foods),
+        "fiber": sum(f.get("nf_dietary_fiber", 0) for f in foods),
+    }
+    total["net_carbs"] = total["carbs"] - total["fiber"]
+
+    state["nutrition_summary"] = total
+    print("✅ Real Nutrition Summary:", total)
     return state
 
 

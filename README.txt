@@ -3,6 +3,7 @@ Backend:
 2. Activate Virtual Env:
    - Windows PowerShell: .\venv\Scripts\Activate.ps1
    - Git Bash/Linux: source venv/Scripts/activate
-3. run server - uvicorn app.main:app --reload
+3. run server:
+   - uvicorn app.main:app --reload
 
 
